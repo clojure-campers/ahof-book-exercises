@@ -1,6 +1,7 @@
 (ns ahof.chapter6
   (:require
-   [hyperfiddle.rcf :as rcf]))
+   [hyperfiddle.rcf :as rcf]
+   [ahof.chapter5 :as chp5]))
 
 ;; Level 1: The Violation Function.
 ;; Write a constraint function c1 that enforces x + y ≤ 5. It should take a vector [x y] and return the violation amount (0 if satisfied, positive if violated).
@@ -117,12 +118,39 @@
 ;; Level 8: Scalarization.
 ;; Implement the scalarizeHOF from Section 6.12. Use it to combine f1(x) = x2 and f2(x) = (x−2)2 with weights 0.5 and 0.5.
 
-;; TODO
+;; Listing 6.8
+(defn scalarize
+ "Combine multiple objectives into a weighted sum."
+  [objectives weights]
+  (fn [x]
+    (reduce + (map (fn [f w] (* w (f x)))
+                   objectives
+                   weights))))
+
+(def fscale
+  (scalarize [(fn [x] (Math/pow x 2))
+              (fn [x] (Math/pow (- x 2) 2))]
+             [0.5
+              0.5]))
+
+(rcf/tests
+ (fscale 5)
+ := 17.0)
 
 ;; Level 9: Pareto Front Tracer.
 ;; Write a function that takes two objectives and returns a list of Pareto-optimal points by running scalarize with 20 different weight vectors evenly spaced between [1, 0] and [0, 1].
 
-;; TODO
+(comment
+  (last (chp5/adam (fn [[x]] (Math/pow x 2)) [0.5] {:max-iter 10000})) ;; 0
+  (last (chp5/adam (fn [[x]] (Math/pow (- x 2) 2)) [0.5] {:max-iter 10000})) ;; 2
+
+  ;; expect to get a linear mix of the optimal answers for each function, ie. [0 .. 2]
+  (for [i (range 0 1 1/20)]
+    (let [j (- 1.0 i)
+          f (scalarize [(fn [[x]] (Math/pow x 2))
+                        (fn [[x]] (Math/pow (- x 2) 2))]
+                       [i j])]
+      (last (chp5/adam f [0.0] {:max-iter 10000})))))
 
 ;; Level 10: Generic Nested Solver.
 ;; The Augmented Lagrangian and the log-barrier method have the same nested-iteration structure but different transformers. Write a generic nested-constrained-solver that takes a transformer function as an argument, so that the same outer loop can be used with either transformer.
