@@ -1,5 +1,6 @@
 {:paths ["src"]
- :deps {com.hyperfiddle/rcf {:mvn/version "20220926-202227"}}
+ :deps {com.hyperfiddle/rcf {:mvn/version "20220926-202227"}
+        hiccup/hiccup {:mvn/version "2.0.0"}}
  :aliases
  ;; clj -M:repl
  {:repl {:extra-deps {nrepl/nrepl {:mvn/version "1.3.1"}

@@ -1,6 +1,10 @@
+(ns ahof.chapter5
+  (:require
+   [hyperfiddle.rcf :as rcf]
+   [ahof.chapter5-util :as util5]))
 
-
-;; Level 1: The Gradient. Implement the gradient function from Section 5.1. Test it on f (x, y) = x2 + y2 at the point [3.0 4.0]. The gradient should be approximately [6.0 8.0].
+;; Level 1: The Gradient.
+;; Implement the gradient function from Section 5.1. Test it on f (x, y) = x2 + y2 at the point [3.0 4.0]. The gradient should be approximately [6.0 8.0].
 
 (defn gradient
   "Function transformer: (R^n -> R) -> (R^n -> R^n).
@@ -22,20 +26,23 @@
                   (* y y))))
             [3.0 4.0])
 
-;; Level 2: Rosenbrock. Implement the rosenbrock function. Compute its gradient at [0.0 0.0] and [1.0 1.0]. Verify that the gradient at the minimum [1.0 1.0] is approximately [0.0 0.0].
+;; Level 2: Rosenbrock.
+;; Implement the rosenbrock function. Compute its gradient at [0.0 0.0] and [1.0 1.0]. Verify that the gradient at the minimum [1.0 1.0] is approximately [0.0 0.0].
 
 (defn rosenbrock [[x y]]
   (+ (Math/pow (- 1.0 x) 2)
      (* 100.0 (Math/pow (- y (* x x)) 2))))
 
-#_(rosenbrock [1.0 1.0]) ;; => 0.0 (the minimum)
-#_(rosenbrock [0.0 0.0]) ;; => 1.0
-#_(rosenbrock [5.0 5.0]) ;; => 40016.0
+(rcf/tests
+ (rosenbrock [1.0 1.0]) := 0.0 ;; (the minimum)
+ (rosenbrock [0.0 0.0]) := 1.0
+ (rosenbrock [5.0 5.0]) := 40016.0
 
-#_((gradient rosenbrock) [0.0 0.0]) ;; [-2.0 0.0]
-#_((gradient rosenbrock) [1.0 1.0]) ;; [0.0 0.0]
+ ((gradient rosenbrock) [0.0 0.0]) ;; [-2.0 0.0]
+ ((gradient rosenbrock) [1.0 1.0])) ;; [0.0 0.0]
 
-;; Level 3: Gradient Descent. Implement gradient descent using the descent framework. Run it on Rosenbrock from [5.0 5.0] with learning rate 0.001. How many iterations does it take to reach f (x) < 10−4?
+;; Level 3: Gradient Descent.
+;; Implement gradient descent using the descent framework. Run it on Rosenbrock from [5.0 5.0] with learning rate 0.001. How many iterations does it take to reach f (x) < 10−4?
 
 (defn descent
   [{:keys [direction-fn step-fn f x0
@@ -147,108 +154,34 @@
 ;; ex
 [{:x [4.902244295647663 5.098085865906503], :value 35864.53467570703, :grad [37135.27181316749 -3786.782653696718], :m [37415.43258144515 -3807.756135579503], :v [1.4016920483182794E8 1428689.1268685556], :t 100, :prev-value 35904.29387510085} ,,,]
 
-(require '[hiccup.core :as hiccup])
 
-(defn plot [f vals]
-  (let [xs    (mapv (fn [s] (first (:x s))) vals)
-        ys    (mapv (fn [s] (second (:x s))) vals)
-        pad   0.5
-        x-min (- (apply min (conj xs 1)) pad)
-        x-max (+ (apply max (conj xs 1)) pad)
-        y-min (- (apply min (conj ys 1)) pad)
-        y-max (+ (apply max (conj ys 1)) pad)
-        w     600
-        h     600
-        n     80
-        dx    (/ (- x-max x-min) n)
-        dy    (/ (- y-max y-min) n)
-        grid  (for [j (range n)
-                    i (range n)]
-                (f [(+ x-min (* i dx))
-                    (+ y-min (* j dy))]))
-        log1p (fn [v] (Math/log (+ 1.0 (max 0.0 v))))
-        lv-lo (log1p (apply min grid))
-        lv-hi (log1p (apply max grid))
-        v->t  (fn [v]
-                (if (= lv-hi lv-lo)
-                  0.5
-                  (/ (- (log1p v) lv-lo) (- lv-hi lv-lo))))
-        t->c  (fn [t] (str "hsl(" (int (* (- 1.0 t) 240)) ",90%,45%)"))
-        cw    (/ w n)
-        ch    (/ h n)
-        sx    (fn [x] (* w (/ (- x x-min) (- x-max x-min))))
-        sy    (fn [y] (* h (- 1.0 (/ (- y y-min) (- y-max y-min)))))
-        rects (map-indexed
-               (fn [idx v]
-                 [:rect {:x      (* (mod idx n) cw)
-                         :y      (* (- n 1 (quot idx n)) ch)
-                         :width  (+ cw 1)
-                         :height (+ ch 1)
-                         :fill   (t->c (v->t v))}])
-               grid)
-        pts   (->> vals
-                   (map (fn [s]
-                          (str (sx (first (:x s))) "," (sy (second (:x s))))))
-                   (clojure.string/join " "))
-        s0    (first vals)
-        sN    (last vals)]
-    (hiccup/html
-     [:svg {:xmlns  "http://www.w3.org/2000/svg"
-            :width  w
-            :height h}
-      [:g rects]
-      [:polyline {:points          pts
-                  :fill            "none"
-                  :stroke          "white"
-                  :stroke-width    2
-                  :stroke-linecap  "round"
-                  :stroke-linejoin "round"}]
-      [:g
-       (let [n (count vals)]
-         (map-indexed
-          (fn [i s]
-            [:circle {:cx             (sx (first (:x s)))
-                      :cy             (sy (second (:x s)))
-                      :r              3
-                      :fill           "none"
-                      :stroke         "white"
-                      :stroke-width   1}])
-          vals))]
+(comment
+  (->> {:f rosenbrock
+        :x0 [5.0 5.0]
+        :lr 0.0001
+        :max-iter 25000}
+       gradient-descent
+       (util5/plot rosenbrock)
+       (spit "plot.svg"))
 
-      [:circle {:cx   (sx (first (:x s0)))
-                :cy   (sy (second (:x s0)))
-                :data-x (str (:x s0))
-                :r    5
-                :fill "lime"}]
-      [:circle {:cx   (sx (first (:x sN)))
-                :cy   (sy (second (:x sN)))
-                :data-x (str (:x sN))
-                :r    5
-                :fill "red"}]
+  (->> {:max-iter 25000}
+       (adam rosenbrock [5.0 5.0])
+       (util5/plot rosenbrock)
+       (spit "plot.svg"))
 
-      [:circle {:cx   (sx 1)
-                :cy   (sy 1)
-                :data-x (str [1 1])
-                :r    5
-                :fill "pink"}]
-      ])))
+  (->> {:max-iter 5000
+        :lr 1.5
+        :beta1 0.9
+        :beta2 0.999
+        :eps 1e-8
+        :tol 1e-8}
+       (adam rosenbrock
+             [(- (rand 20.0) 10.0)
+              (- (rand 20.0) 10.0)])
+       (util5/plot rosenbrock)
+       (spit "plot.svg")))
 
 
-#_(spit "plot.svg" (plot rosenbrock (gradient-descent {:f rosenbrock
-                                                       :x0 [5.0 5.0]
-                                                       :lr 0.0001
-                                                       :max-iter 25000})))
 
-#_(spit "plot.svg" (plot rosenbrock (adam rosenbrock [5.0 5.0]
-                                          {:max-iter 25000})))
-#_(spit "plot.svg" (plot rosenbrock (adam rosenbrock
-                                          [(- (rand 20.0) 10.0)
-                                           (- (rand 20.0) 10.0)] #_[5.0 5.0]
-                                          {:max-iter 5000
-                                           :lr 1.5
-                                           :beta1 0.9
-                                           :beta2 0.999
-                                           :eps 1e-8
-                                           :tol 1e-8})))
 
 
